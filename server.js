@@ -26,28 +26,34 @@ const server = http.createServer(app);
 
 // ====== Robust CORS Setup ======
 const allowedOrigins = [
-  "*", 
-  process.env.FRONTEND_URL  
+  process.env.FRONTEND_URL,
+  "*"
 ];
 
 const corsOptions = {
+ 
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+     if (!origin) return callback(null, true);
+
+    if (
+      origin.includes("vercel.app") ||
+      origin.includes("localhost") ||
+      origin === process.env.FRONTEND_URL
+    ) {
       callback(null, true);
     } else {
       console.log("Blocked by CORS:", origin);
       callback(new Error("Not allowed by CORS"));
     }
   },
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
 };
 
-// Apply CORS middleware before all routes
+// Apply before all routes
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // Handle preflight requests
+app.options("*", cors(corsOptions));
 app.use(express.json());
-
 // ====== Socket.IO with same CORS ======
 const io = new Server(server, {
   cors: corsOptions,
@@ -185,4 +191,3 @@ mongoose.connect(process.env.MONGO_URI)
     server.listen(PORT, () => console.log(`🚀 Unified server running on port ${PORT}`));
   })
   .catch(err => console.error("MongoDB connection error:", err));
-
