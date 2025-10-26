@@ -30,7 +30,14 @@ const server = http.createServer(app);
 // Initialize Socket.IO on same server
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: function (origin, callback) {
+      const allowedOrigins = [process.env.FRONTEND_URL];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   },
@@ -183,3 +190,4 @@ mongoose
     });
   })
   .catch((err) => console.error("MongoDB connection error:", err));
+
