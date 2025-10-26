@@ -1,0 +1,6 @@
+{
+  "watch": ["server.js", "routes", "socketHandlers", "services"],
+  "ignore": ["node_modules", "*.log", "public", "uploads"],
+  "ext": "js,json",
+  "legacyWatch": true
+}
