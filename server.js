@@ -7,7 +7,7 @@ const { Server } = require("socket.io");
 const Y = require("yjs");
 const { encodeStateAsUpdate, applyUpdate } = Y;
 const { Binary } = require("mongodb");
-const setupYWebSocketServer = require("./start-yws").setupYWebSocketServer; 
+const setupYWebSocketServer = require("./start-yws").setupYWebSocketServer;
 
 // Import routes & middleware
 const authRoutes = require("./routes/auth");
@@ -21,43 +21,39 @@ const memberRoutes = require("./routes/memberRoutes");
 
 dotenv.config();
 
-// Initialize express app
 const app = express();
-
-// Create ONE http server
 const server = http.createServer(app);
 
-// Initialize Socket.IO on same server
-const io = new Server(server, {
-  cors: {
-    origin: function (origin, callback) {
-      const allowedOrigins = [process.env.FRONTEND_URL];
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-  },
-});
+// ====== Robust CORS Setup ======
+const allowedOrigins = [
+  "http://localhost:3000", // Local dev
+  process.env.FRONTEND_URL   // Deployed frontend
+];
 
-// Middleware
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
-    const allowedOrigins = [process.env.FRONTEND_URL];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log("Blocked by CORS:", origin);
       callback(new Error("Not allowed by CORS"));
     }
   },
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
   credentials: true,
-}));
+};
+
+// Apply CORS middleware before all routes
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // Handle preflight requests
 app.use(express.json());
 
-// Routes
+// ====== Socket.IO with same CORS ======
+const io = new Server(server, {
+  cors: corsOptions,
+});
+
+// ====== Routes ======
 app.use("/api/auth", authRoutes);
 app.use("/api/workspaces", workspaceRoutes);
 app.use("/api/lists", listRoutes);
@@ -72,16 +68,14 @@ app.get("/api/protected", authMiddleware, (req, res) => {
 // ====== Chat Fetch ======
 app.get("/api/messages/:workspaceId", authMiddleware, async (req, res) => {
   try {
-    const messages = await Chat.find({
-      workspaceId: req.params.workspaceId,
-    }).sort({ createdAt: 1 });
+    const messages = await Chat.find({ workspaceId: req.params.workspaceId }).sort({ createdAt: 1 });
     res.json(messages);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch messages" });
   }
 });
 
-// ====== Mongo & Yjs State ======
+// ====== Mongo + Yjs State ======
 let ydocsCollection = null;
 const docs = new Map();
 
@@ -107,7 +101,7 @@ async function saveDocument(docName, ydoc) {
   console.log(`💾 Saved snapshot for doc: ${docName}`);
 }
 
-// ====== SOCKET.IO HANDLERS ======
+// ====== Socket.IO Handlers ======
 const rooms = {};
 
 io.on("connection", (socket) => {
@@ -130,7 +124,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Yjs Document Collaboration
+  // Yjs Collaboration
   socket.on("yjs-doc-join", async (docName) => {
     socket.join(docName);
     let ydoc = docs.get(docName);
@@ -180,19 +174,14 @@ io.on("connection", (socket) => {
   socket.on("disconnect", leaveRoom);
 });
 
-// ====== Yjs WebSocket Integration (attach to same server) ======
-const wss = setupYWebSocketServer(server); // 👈 Pass the same HTTP server here
+// ====== Yjs WebSocket Integration ======
+setupYWebSocketServer(server); // attach to same HTTP server
 
 // ====== MongoDB + Start Server ======
-mongoose
-  .connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     ydocsCollection = mongoose.connection.collection("yjsdocuments");
     const PORT = process.env.PORT || 5000;
-    server.listen(PORT, () => {
-      console.log(`🚀 Unified server running on port ${PORT}`);
-    });
+    server.listen(PORT, () => console.log(`🚀 Unified server running on port ${PORT}`));
   })
-  .catch((err) => console.error("MongoDB connection error:", err));
-
-
+  .catch(err => console.error("MongoDB connection error:", err));
