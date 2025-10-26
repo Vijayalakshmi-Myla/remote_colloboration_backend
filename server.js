@@ -26,8 +26,8 @@ const server = http.createServer(app);
 
 // ====== Robust CORS Setup ======
 const allowedOrigins = [
-  "http://localhost:3000", // Local dev
-  process.env.FRONTEND_URL   // Deployed frontend
+  "*", 
+  process.env.FRONTEND_URL  
 ];
 
 const corsOptions = {
@@ -185,3 +185,4 @@ mongoose.connect(process.env.MONGO_URI)
     server.listen(PORT, () => console.log(`🚀 Unified server running on port ${PORT}`));
   })
   .catch(err => console.error("MongoDB connection error:", err));
+
