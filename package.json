@@ -7,7 +7,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "ws": "node yjs-server/y-websocket-server.js",
-    "start-yws": "node start-yws.js"
+    "start-yws": "node start-yws.js",
+    "build": "echo \"No build step required\""
   },
   "keywords": [],
   "author": "",
